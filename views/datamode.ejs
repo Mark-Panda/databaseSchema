@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="js/godebug.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        html,
+        body,
+        .fullpage {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .fullpage {
+            background-color: #abc;
+            color: white;
+            font-size: 35px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body onload="init()">
+    <div class="fullpage" id="myDiagramDiv">
+
+    </div>
+
+    <script>
+        function init() {
+            let nodeDataArray = '<%- nodeDataArray%>'
+            let linkDataArray = '<%- linkDataArray%>'
+            if (window.goSamples) goSamples(); // init for these samples -- you don't need to call this
+            var $ = go.GraphObject.make; // for conciseness in defining templates
+
+            myDiagram =
+                $(go.Diagram, "myDiagramDiv", {
+                    validCycle: go.Diagram.CycleNotDirected, // don't allow loops
+                    // For this sample, automatically show the state of the diagram's model on the page
+                    "ModelChanged": function(e) {
+                        if (e.isTransactionFinished) showModel();
+                    },
+                    "undoManager.isEnabled": true
+                });
+
+            // This template is a Panel that is used to represent each item in a Panel.itemArray.
+            // The Panel is data bound to the item object.
+            var fieldTemplate =
+                $(go.Panel, "TableRow", // this Panel is a row in the containing Table
+                    new go.Binding("portId", "name"), // this Panel is a "port"
+                    {
+                        background: "transparent", // so this port's background can be picked by the mouse
+                        fromSpot: go.Spot.Right, // links only go from the right side to the left side
+                        toSpot: go.Spot.Left,
+                        // allow drawing links from or to this port:
+                        fromLinkable: true,
+                        toLinkable: true
+                    },
+                    $(go.Shape, {
+                            width: 12,
+                            height: 12,
+                            column: 0,
+                            strokeWidth: 2,
+                            margin: 4,
+                            // but disallow drawing links from or to this shape:
+                            fromLinkable: false,
+                            toLinkable: false
+                        },
+                        new go.Binding("figure", "figure"),
+                        new go.Binding("fill", "color")),
+                    $(go.TextBlock, {
+                            margin: new go.Margin(0, 5),
+                            column: 1,
+                            font: "bold 13px sans-serif",
+                            alignment: go.Spot.Left,
+                            // and disallow drawing links from or to this text:
+                            fromLinkable: false,
+                            toLinkable: false
+                        },
+                        new go.Binding("text", "name")),
+                    $(go.TextBlock, {
+                            margin: new go.Margin(0, 5),
+                            column: 2,
+                            font: "13px sans-serif",
+                            alignment: go.Spot.Left
+                        },
+                        new go.Binding("text", "info"))
+                );
+
+            // This template represents a whole "record".
+            myDiagram.nodeTemplate =
+                $(go.Node, "Auto", {
+                        copyable: false, //可复制
+                        deletable: true //可删除
+                    },
+                    new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify), //双休连接
+                    // this rectangular shape surrounds the content of the node
+                    $(go.Shape, {
+                        fill: "#EEEEEE"
+                    }),
+                    // the content consists of a header and a list of items
+                    $(go.Panel, "Vertical",
+                        // this is the header for the whole node
+                        $(go.Panel, "Auto", {
+                                stretch: go.GraphObject.Horizontal
+                            }, // as wide as the whole node
+                            $(go.Shape, {
+                                fill: "#1570A6",
+                                stroke: null
+                            }),
+                            $(go.TextBlock, {
+                                    alignment: go.Spot.Center,
+                                    margin: 3,
+                                    stroke: "white",
+                                    textAlign: "center",
+                                    font: "bold 12pt sans-serif"
+                                },
+                                new go.Binding("text", "key"))),
+                        // this Panel holds a Panel for each item object in the itemArray;
+                        // each item Panel is defined by the itemTemplate to be a TableRow in this Table
+                        $(go.Panel, "Table", {
+                                padding: 2,
+                                minSize: new go.Size(100, 10),
+                                defaultStretch: go.GraphObject.Horizontal,
+                                itemTemplate: fieldTemplate
+                            },
+                            new go.Binding("itemArray", "fields")
+                        ) // end Table Panel of items
+                    ) // end Vertical Panel
+                ); // end Node
+
+            myDiagram.linkTemplate =
+                $(go.Link, {
+                        relinkableFrom: false, //线的来源可以变动
+                        relinkableTo: false, // 线的终点可以变动
+                        toShortLength: 4,
+                        fromShortLength: 2
+                    },
+                    $(go.Shape, {
+                        strokeWidth: 1.5
+                    }),
+                    $(go.Shape, {
+                        toArrow: "Standard",
+                        stroke: null
+                    })
+                );
+
+
+            myDiagram.model =
+                $(go.GraphLinksModel, {
+                    copiesArrays: true,
+                    copiesArrayObjects: true,
+                    linkFromPortIdProperty: "fromPort",
+                    linkToPortIdProperty: "toPort",
+                    nodeDataArray: JSON.parse(nodeDataArray),
+                    linkDataArray: JSON.parse(linkDataArray)
+                });
+
+            showModel(); // show the diagram's initial model
+
+            function showModel() {
+                console.log('修改内容是在浏览器里可以看到的', myDiagram.model.toJson());
+                // document.getElementById("mySavedModel").textContent = myDiagram.model.toJson();
+            }
+        }
+    </script>
+
+</body>
+
+</html>
