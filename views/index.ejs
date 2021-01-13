@@ -6,93 +6,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <script src="js/godebug.js"></script>
-    <!-- <link rel='stylesheet' href='./bootstrap.min.css' />
-    <script src='./bootstrap.min.js'></script>
-    <script src="./jquery.min.js"></script> -->
     <link href="js/bootstrap.min.css" rel="stylesheet">
-
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
 
-    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script> -->
 
     <script>
         let nodeDataArray = [] //表数据信息
-        let filedInfos = [] //所有字段信息
+        let forigenKeyList = [] //当前表的外键关系
         let linkDataArray = [] //表关系信息
-            //用于生成模型图
+        let allTableList = [] //所有的表名  存放可被操作的表名  只存放名称
+        let addNodeFieldInfo = []
+
+        let isUpdateTable = false
+
+        //用于生成模型图
+
         function makeImage() {
             let tempFieldList = []
+            let nodeInfo = {}
             console.log('生成模型', document.getElementById("modelName").value);
             const tableName = document.getElementById("modelName").value
             if (!tableName) {
                 alert("表名不能为空")
+                return
             } else {
-                const filedLen = document.getElementById('mytable').rows
-                console.log('所有的字段信息长度', filedLen.length);
-                for (let i = 1; i < filedLen.length; i++) {
-                    console.log('----单行有多少列', filedLen[i].cells.length);
-                    let tempField = {}
-                    for (let j = 0; j < filedLen[i].cells.length; j++) {
-
-                        //单行每列的值
-                        const cowInfo = filedLen[i].cells[j].innerHTML;
-                        console.log('单行每列的值', cowInfo);
-                        switch (j) {
-                            case 0:
-                                tempField['name'] = cowInfo
-                                break;
-                            case 1:
-                                tempField['info'] = cowInfo
-                                break;
-                            case 2:
-                                tempField['defaultValue'] = cowInfo
-                                break;
-                            case 3:
-                                tempField['isNull'] = cowInfo
-                                break;
-                            case 4:
-                                tempField['isPrimary'] = cowInfo
-                                break;
-                            case 5:
-                                tempField['isForeign'] = cowInfo
-                                break;
-
-                            default:
-                                break;
-                        }
-
-                        // tempField[j + 1] = cowInfo
-                    }
-                    tempFieldList.push(tempField)
-                }
-                console.log('----tempFieldList', tempFieldList);
-                /*
-                计算表模型的位置
-                localPostionY  Y轴位置
-                localPostionX  X轴位置
-                */
-                let localPostionY = parseInt(nodeDataArray.length / 5) * 200
-                let localPostionX = (nodeDataArray.length % 5 - 1) * 300
-
-
 
                 /*
-                表的基本数据
+                表关系的数据
                 */
-                nodeDataArray.push({
-                        key: tableName,
-                        fields: tempFieldList,
-                        loc: localPostionX + " " + localPostionY //位置
-                    })
-                    /*
-                    表关系的数据
-                    */
-                document.getElementById("iframStyleId").src = `/datamodel?nodeDataArray=${JSON.stringify(nodeDataArray)}&linkDataArray=${JSON.stringify(linkDataArray)}`;
-                // window.location.reload() //刷新整个页面
-                //输入框清空
+
+                allTableList.push(tableName)
+                nodeInfo['key'] = tableName
+                nodeInfo['fields'] = []
+                myDiagram.startTransaction("")
+                myDiagram.model.addNodeData(nodeInfo);
+                myDiagram.commitTransaction("")
+                    //输入框清空
                 $('input').val("")
                     //勾选框清空
                 $("input:checked").each(function() {
@@ -100,6 +50,18 @@
                 });
                 //清空表格
                 $("#mytable  tr:not(:first)").remove()
+
+                document.getElementById('typeShow').style.display = 'block'
+                document.getElementById('filednameShow').style.display = 'block'
+                document.getElementById('manyCheckShow').style.display = 'block'
+                document.getElementById('lastPageShow').style.display = 'inline'
+                document.getElementById('modelNameShow').style.display = 'none'
+                document.getElementById('goModelShow').style.display = 'none'
+                document.getElementById('addLineShow').style.display = 'inline'
+                document.getElementById('delLineShow').style.display = 'block'
+                document.getElementById('mytable').style.display = 'table'
+
+                document.getElementById('delTableShow').style.display = 'none'
             }
         }
 
@@ -127,35 +89,96 @@
             for (let i = 0; i < nodeDataArray.length; i++) {
                 $('#selectSignTable').append('<li><a href="#" id="forignKeyRel">' + nodeDataArray[i].key + '</a></li>')
             }
-
         }
 
-
+        //添加字段信息
         function addTable() {
             let filedListInfo = []
+            let otherInfo = {}
+            let linkData = {}
 
-            const filedName = document.getElementById('filedName').value
-            const typeName = document.getElementById('fileTypeName').value
+
+
+            //如果是修改表过来的
+            if (isUpdateTable) {
+                const existData = JSON.parse(myDiagram.model.toJson())['nodeDataArray']
+                for (let ji in existData) {
+                    if (existData[ji].key === allTableList[allTableList.length - 1]) {
+                        // addNodeFieldInfo.push()
+                        addNodeFieldInfo = existData[ji].fields
+                    }
+                }
+            }
+
+            const presentNode = myDiagram.model.findNodeDataForKey(allTableList[allTableList.length - 1]);
+            console.log('当前节点信息', presentNode);
+
+
+            const filedName = document.getElementById('filedName').value //字段名称
+            const typeName = document.getElementById('fileTypeName').value //字段类型
+
+            const relTableName = document.getElementById('tableRelation').value //表关系
+            const relFieldName = document.getElementById('fieldRelation').value //字段关系
+            const relTableForiegn = document.getElementById('relForignName').value //外键名称
+
+            const isHaveForignKey = document.getElementById('checkForeignSelect').value //是否是外键
+            const isHaveNull = document.getElementById('checkNullSelect').value //是否是NULL
+            const isHavePrimaryKey = document.getElementById('checkPrimarySelect').value //是否是主键
+
             if (!filedName || !typeName) {
                 alert("字段或类型不能为空")
+                return
             } else {
                 filedListInfo.push(filedName)
-
-
 
                 filedListInfo.push(typeName)
                 const defaultName = document.getElementById('defaultName').value
                 filedListInfo.push(defaultName)
+                otherInfo['defaultValue'] = defaultName
 
-                // 复选框
-                const checkList = $('input:checkbox')
-                for (let i = 0; i < checkList.length; i++) {
-                    if (checkList[i].value === "true") {
-                        filedListInfo.push('true')
-                    } else {
-                        filedListInfo.push('false')
-                    }
+                if (isHaveNull === 'true') {
+                    filedListInfo.push('true')
+                    otherInfo['isHaveNull'] = true
+                } else {
+                    filedListInfo.push('false')
+                    otherInfo['isHaveNull'] = false
                 }
+
+                if (isHavePrimaryKey === 'true') {
+                    filedListInfo.push('true')
+                    otherInfo['isHavePrimaryKey'] = true
+                } else {
+                    filedListInfo.push('false')
+                    otherInfo['isHavePrimaryKey'] = false
+                }
+
+                if (isHaveForignKey === 'true') {
+
+                    if (relTableName && relFieldName && relTableForiegn) {
+                        otherInfo['forignKeyInfo'] = {
+                            relTable: relTableName,
+                            relFileld: relFieldName,
+                            relType: relTableForiegn
+                        }
+
+                        linkData = {
+                            from: presentNode.key,
+                            fromPort: filedName,
+                            to: relTableName,
+                            toPort: relFieldName
+                        }
+                        filedListInfo.push('true')
+                        filedListInfo.push(relTableForiegn)
+                    } else {
+                        alert("请确认外键关系!")
+                        return
+                    }
+
+                } else {
+                    filedListInfo.push('false')
+                    filedListInfo.push('')
+                }
+
 
                 var c = document.getElementById('mytable'); //获得表格的信息
                 const tabelLen = c.rows.length
@@ -172,6 +195,27 @@
                         y.innerHTML = filedListInfo[i];
                     }
                 }
+
+                addNodeFieldInfo.push({
+                    name: filedName,
+                    info: typeName,
+                    otherInfo
+                })
+
+
+
+                console.log('修改的字段', addNodeFieldInfo);
+                myDiagram.startTransaction("")
+                    //添加表字段
+                myDiagram.model.setDataProperty(presentNode, 'fields', addNodeFieldInfo);
+                myDiagram.model.updateTargetBindings(presentNode)
+                    //添加链接关系
+                if (Object.keys(linkData).length > 0) {
+                    myDiagram.model.addLinkData(linkData);
+                }
+
+                myDiagram.commitTransaction("")
+
             }
             //输入框清空
             $('input').val("")
@@ -179,18 +223,109 @@
             $("input:checked").each(function() {
                 this.checked = false;
             });
-
+            //外键不显示
+            document.getElementById('tableRel').style.display = 'none'
+            document.getElementById('fieldRel').style.display = 'none'
+            document.getElementById('forignKeyRelTable').style.display = 'none'
         }
 
         function delTable() {
-            var x = document.getElementById("mytable");
-            const tabelLen = x.rows.length
-            if (tabelLen > 1) {
-                x.deleteRow(tabelLen - 1); //删除一行
+            const presentNode = myDiagram.model.findNodeDataForKey(allTableList[allTableList.length - 1]);
+            console.log('当前操作的节点信息', presentNode);
+            // presentNode.fields
+            $('#selectDelField').find('li').remove()
+            for (let i = 0; i < presentNode.fields.length; i++) {
+                $('#selectDelField').append('<li><a href="#" id="maybeDelField">' + presentNode.fields[i].name + '</a></li>')
             }
+
+            // var x = document.getElementById("mytable");
+            // const tabelLen = x.rows.length
+            // if (tabelLen > 1) {
+            //     x.deleteRow(tabelLen - 1); //删除一行
+            // }
         }
 
 
+        //返回到创建模型页面
+        function backBefore() {
+
+            document.getElementById('typeShow').style.display = 'none'
+            document.getElementById('filednameShow').style.display = 'none'
+            document.getElementById('manyCheckShow').style.display = 'none'
+            document.getElementById('lastPageShow').style.display = 'none'
+            document.getElementById('modelNameShow').style.display = 'block'
+            document.getElementById('goModelShow').style.display = 'inline'
+            document.getElementById('addLineShow').style.display = 'none'
+            document.getElementById('delLineShow').style.display = 'none'
+            document.getElementById('mytable').style.display = 'none'
+            document.getElementById('tableRel').style.display = 'none'
+            document.getElementById('fieldRel').style.display = 'none'
+            document.getElementById('forignKeyRelTable').style.display = 'none'
+
+            document.getElementById('delTableShow').style.display = 'block'
+            addNodeFieldInfo = []
+        }
+
+
+        //需要修改的表名
+        function updateTable() {
+            const modelAllInfo = JSON.parse(myDiagram.model.toJson())
+            $('#selectDelTable').find('li').remove()
+            for (let i = 0; i < modelAllInfo["nodeDataArray"].length; i++) {
+                $('#selectDelTable').append('<li><a href="#" id="maybeUpdateTable">' + modelAllInfo["nodeDataArray"][i].key + '</a></li>')
+            }
+        }
+
+        //选择需要修改信息的表跳转
+        $(document).on('click', "#maybeUpdateTable", function() {
+            $('input').val("")
+                //勾选框清空
+            $("input:checked").each(function() {
+                this.checked = false;
+            });
+            //清空表格
+            $("#mytable  tr:not(:first)").remove()
+
+            document.getElementById('typeShow').style.display = 'block'
+            document.getElementById('filednameShow').style.display = 'block'
+            document.getElementById('manyCheckShow').style.display = 'block'
+            document.getElementById('lastPageShow').style.display = 'inline'
+            document.getElementById('modelNameShow').style.display = 'none'
+            document.getElementById('goModelShow').style.display = 'none'
+            document.getElementById('addLineShow').style.display = 'inline'
+            document.getElementById('delLineShow').style.display = 'block'
+            document.getElementById('mytable').style.display = 'table'
+            document.getElementById('delTableShow').style.display = 'none'
+
+            //被选中的表名
+            const selectedTable = $(this).html()
+            allTableList = [selectedTable]
+
+            //将被选中的表的字段信息放到表格中
+            const modelAllInfo = JSON.parse(myDiagram.model.toJson())
+            for (let i in modelAllInfo["nodeDataArray"]) {
+                if (modelAllInfo["nodeDataArray"][i].key === $(this).html()) {
+                    for (let j = 0; j < modelAllInfo["nodeDataArray"][i].fields.length; j++) {
+                        var c = document.getElementById('mytable'); //获得表格的信息
+                        const tabelLen = c.rows.length
+                        var z = c.rows[0].cells; //如果不是空表，首先获得表格有多少列，先获取再插入新行
+                        var x = c.insertRow(tabelLen);
+                        for (var o = 0; o < z.length; o++) { //依次向新行插入表格列数的单元格
+                            var y = x.insertCell(o);
+                            if (o === 0) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].name;
+                            if (o === 1) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].info;
+                            if (o === 2) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.defaultValue;
+                            if (o === 3) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.isHaveNull ? 'true' : 'false';
+                            if (o === 4) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.isHavePrimaryKey ? 'true' : 'false';
+                            if (o === 5) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo ? 'true' : 'false';
+                            if (o === 6) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo ? modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo.relType : '';
+                        }
+                    }
+                }
+            }
+            isUpdateTable = true
+
+        })
 
         //解决jQuery append后无法获取
         $(document).on("click", "#forignKeyRel", function() {
@@ -200,9 +335,60 @@
             $("div#selectField").siblings("input").val($(this).html())
         })
 
+        //删除字段
+        $(document).on("click", "#maybeDelField", function() {
+            const presentNode = myDiagram.model.findNodeDataForKey(allTableList[allTableList.length - 1]);
+            console.log('当前操作的节点信息', presentNode);
+            const presentTableFiled = presentNode.fields
+            for (let i = 0; i < presentTableFiled.length; i++) {
+                if (presentTableFiled[i].name === $(this).html()) {
+
+                    //删除展示表格中的信息
+                    var x = document.getElementById("mytable");
+                    const tabelLen = i + 1
+                    x.deleteRow(tabelLen); //删除一行
+
+                    myDiagram.startTransaction("")
+                        //删除线
+                    if (presentTableFiled[i].otherInfo.forignKeyInfo) {
+                        console.log('33333333333333');
+                        let templinkData = {
+                            from: presentNode.key,
+                            fromPort: presentTableFiled[i].name,
+                            to: presentTableFiled[i].otherInfo.forignKeyInfo.relTable,
+                            toPort: presentTableFiled[i].otherInfo.forignKeyInfo.relFileld
+                        }
+
+                        const allLink = myDiagram.model.linkDataArray
+                        console.log('2222222', allLink.length);
+                        for (let j in allLink) {
+                            if (allLink[j].from === templinkData.from && allLink[j].fromPort === templinkData.fromPort && allLink[j].to === templinkData.to && allLink[j].toPort === templinkData.toPort) {
+                                myDiagram.model.linkDataArray.splice(j, 1)
+                            }
+                        }
+
+                    }
+
+
+                    //删除Node的节点
+                    presentTableFiled.splice(i, 1)
+                    myDiagram.model.setDataProperty(presentNode, 'fields', presentTableFiled);
+                    myDiagram.model.updateTargetBindings(presentNode)
+                    myDiagram.commitTransaction("")
+                    myDiagram.model = go.Model.fromJson(myDiagram.model);
+
+                }
+            }
+        })
+
+
         $(document).ready(function() {
             $("[name='allTypeInfo']").click(function() {
                 $("div#selectType").siblings("input").val($(this).html());
+            });
+            $("[name='allTableTypeInfo']").click(function() {
+                console.log('获取外键表关系', $(this).attr("value"));
+                $("div#selectForignKeyType").siblings("input").val($(this).attr("value"));
             });
 
             $("input[name=isNullSelect]").click(function() {
@@ -224,10 +410,12 @@
                     $(this).attr("value", "true")
                     document.getElementById('tableRel').style.display = 'inline'
                     document.getElementById('fieldRel').style.display = 'inline'
+                    document.getElementById('forignKeyRelTable').style.display = 'inline'
                 } else {
                     $(this).attr("value", "false")
                     document.getElementById('tableRel').style.display = 'none'
                     document.getElementById('fieldRel').style.display = 'none'
+                    document.getElementById('forignKeyRelTable').style.display = 'none'
                 }
             });
         });
@@ -238,18 +426,16 @@
     <div style="width:100%; height:50px;float:left; text-align: center;font-size: xx-large; background-color:#c9bcca;">
         模型
     </div>
-    <div style="width:70%; height:1200px;float:left; background-color:#ecf3f3;">
-        <iframe frameborder="0" class="iframStyle" height="100%" width="100%" id="iframStyleId">页面</iframe>
+    <div class="myDiagramDiv" id="myDiagramDiv" style="width:70%; height:1200px;float:left; background-color:#ecf3f3;">
+        <!-- <iframe frameborder="0" class="iframStyle" height="100%" width="100%" id="iframStyleId">页面</iframe> -->
     </div>
     <div id="myLISTDiv" style="width:30%; height:1200px;float:left; background-color:#278a8a;">
-        <div class="input-group" style="margin-top: 20px;margin-left: 25px; width: 50%;">
+        <div class="input-group" style="margin-top: 100px;margin-left: 100px; width: 50%; display: block;" id="modelNameShow">
             <span class="input-group-addon" id="basic-addon1">模型名称</span>
             <input type="text" class="form-control" placeholder="" aria-describedby="basic-addon1" id="modelName">
         </div>
 
-
-
-        <div class="row" style="margin-top: 20px;margin-left: 10px;">
+        <div class="row" style="margin-top: 20px;margin-left: 20px; display: none;" id="typeShow">
             <div class="col-lg-6">
                 <div class="input-group">
                     <div class="input-group-btn" id="selectType">
@@ -265,30 +451,29 @@
                             <li><a href="#" name="allTypeInfo">Enum</a></li>
                         </ul>
                     </div>
-                    <input type="text" id="fileTypeName" class="form-control" aria-label="..." placeholder="">
-                    <!-- <input type="text" id="fileTypeName" class="form-control" aria-label="..." placeholder="" value="String"> -->
+                    <input type="text" id="fileTypeName" class="form-control" aria-label="..." placeholder="" disabled="disabled">
                 </div>
             </div>
         </div>
 
-        <div id="" class="container" style="margin-top: 20px;margin-left: 10px; width: 300px;">
+        <div class="container" style="margin-top: 20px;margin-left: 20px; width: 50%; display: none;" id="filednameShow">
             <label>字段名称</label>
             <input type="text" name="filedName" id="filedName" value="" class="form-control" />
             <label>默认值</label>
             <input type="text" name="defaultName" id="defaultName" value="" class="form-control" />
         </div>
-        <div class="checkbox" style="margin-top: 20px;margin-left: 25px;">
+        <div class="checkbox" style="margin-top: 20px;margin-left: 25px; display: none;" id="manyCheckShow">
             <label for="">
-                <input type="checkbox" name="isNullSelect" value="false">是否为NULL
+                <input type="checkbox" name="isNullSelect" value="false" id="checkNullSelect">是否为NULL
             </label>
             <label for="">
-                <input type="checkbox" name="isPrimarySelect" value="false">是否为主键
+                <input type="checkbox" name="isPrimarySelect" value="false" id="checkPrimarySelect">是否为主键
             </label>
             <label for="">
-                <input type="checkbox"  name="isForeignSelect" value="false">是否为外键
+                <input type="checkbox"  name="isForeignSelect" value="false" id="checkForeignSelect">是否为外键
             </label>
         </div>
-        <div class="row" style="margin-top: 20px;margin-left: 10px; display: none;" id="tableRel">
+        <div class="row" style="margin-top: 20px;margin-left: 10px; display: none; " id="tableRel">
             <div class="col-lg-6">
                 <div class="input-group">
                     <div class="input-group-btn" id="selectTable">
@@ -300,7 +485,7 @@
                         <ul class="dropdown-menu" id="selectSignTable">
                         </ul>
                     </div>
-                    <input type="text" id="tableRelation" class="form-control" aria-label="..." placeholder="" value="">
+                    <input type="text" id="tableRelation" class="form-control" aria-label="..." placeholder="" value="" disabled="disabled">
                 </div>
             </div>
         </div>
@@ -317,17 +502,53 @@
                         <ul class="dropdown-menu" id="selectSignField">
                         </ul>
                     </div>
-                    <input type="text" id="fieldRelation" class="form-control" aria-label="..." placeholder="" value="">
+                    <input type="text" id="fieldRelation" class="form-control" aria-label="..." placeholder="" value="" disabled="disabled">
                 </div>
             </div>
         </div>
 
 
-        <button class="btn btn-default" onclick="addTable()" type="submit" style="margin-top: 20px; margin-left: 20px;">增加一行</button>
-        <button class="btn btn-default" onclick="delTable()" type="submit" style="margin-top: 20px; margin-left: 20px;">删除一行</button>
-        <button class="btn btn-default" onclick="makeImage()" type="submit" style="margin-top: 20px; margin-left: 20px;">生成图形</button>
 
-        <table class="table" style="margin-top: 20px; " id="mytable">
+        <div class="row" style="margin-top: 20px;margin-left: 10px; display: none;" id="forignKeyRelTable">
+            <div class="col-lg-6">
+                <div class="input-group">
+                    <div class="input-group-btn" id="selectForignKeyType">
+                        <button type="button" id="selectButtonType" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                            表关系类型
+                            <span class="caret"></span>
+                            <span class="sr-only">Toggle Dropdown</span>
+                        </button>
+                        <ul class="dropdown-menu" id="selectSign">
+                            <li><a href="#" name="allTableTypeInfo" value="OneToOne">一对一</a></li>
+                            <li><a href="#" name="allTableTypeInfo" value="OneToMany">一对多</a></li>
+                            <li><a href="#" name="allTableTypeInfo" value="ManyToMany">多对多</a></li>
+                        </ul>
+                    </div>
+                    <input type="text" id="relForignName" class="form-control" aria-label="..." placeholder="" disabled="disabled">
+                    <!-- <input type="text" id="fileTypeName" class="form-control" aria-label="..." placeholder="" value="String"> -->
+                </div>
+            </div>
+        </div>
+
+
+
+
+        <div class="dropdown" style="margin-top: 20px; margin-left: 20px;display: none; float:left;" id="delLineShow">
+            <button type="button" id="selectDelButtonField" onclick="delTable()" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                选择删除的字段名
+                <span class="caret"></span>
+                <span class="sr-only">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu" id="selectDelField">
+            </ul>
+        </div>
+
+
+        <button class="btn btn-default" onclick="addTable()" type="submit" style="margin-top: 20px; margin-left: 30px; display: none;" id="addLineShow">增加一行</button>
+        <button class="btn btn-default" onclick="makeImage()" type="submit" style="margin-top: 100px; margin-left: 180px; display: inline;" id="goModelShow">生成图形</button>
+        <button class="btn btn-default" onclick="backBefore()" type="submit" style="margin-top: 20px; margin-left: 20px; display: none;" id="lastPageShow">返回上一页</button>
+
+        <table class="table" style="margin-top: 25px; display: none; " id="mytable">
             <thead>
                 <tr>
                     <th>字段名</th>
@@ -336,6 +557,7 @@
                     <th>是否为NULL</th>
                     <th>是否为主键</th>
                     <th>是否为外键</th>
+                    <th>外键关系</th>
                 </tr>
             </thead>
 
@@ -343,11 +565,190 @@
         </table>
 
 
+        <div class="dropdown" style="margin-top: 50px; margin-left: 150px; " id="delTableShow">
+            <button type="button" id="selectDelButtonTable" onclick="updateTable()" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                需要修改的表名
+                <span class="caret"></span>
+                <span class="sr-only">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu" id="selectDelTable">
+            </ul>
+        </div>
 
 
     </div>
 
+    <script>
+        let modelLocalList = []
 
+
+
+        if (window.goSamples) goSamples(); // init for these samples -- you don't need to call this
+        var _ = go.GraphObject.make; // for conciseness in defining templates
+
+        myDiagram =
+            _(go.Diagram, "myDiagramDiv", {
+                validCycle: go.Diagram.CycleNotDirected, // don't allow loops
+                "grid.visible": true, //显示背景网格
+                "animationManager.isEnabled": false,
+                // For this sample, automatically show the state of the diagram's model on the page
+                "ModelChanged": function(e) {
+                    if (e.isTransactionFinished) showModel()
+
+                },
+                // "contextClick": function(e) {
+                //     console.log('背景点击');
+                // },
+                "allowDelete": false,
+                //鼠标点击模型和线
+                // "select": function(e) {
+                //     console.log('点击急急急', e.data);
+                // },
+                // isReadOnly: true,
+                // contentAlignment: go.Spot.Center,
+                "undoManager.isEnabled": true
+            });
+        init()
+
+        function init() {
+
+            // This template is a Panel that is used to represent each item in a Panel.itemArray.
+            // The Panel is data bound to the item object.
+            var fieldTemplate =
+                _(go.Panel, "TableRow", // this Panel is a row in the containing Table
+                    new go.Binding("portId", "name"), // this Panel is a "port"
+                    {
+                        background: "transparent", // so this port's background can be picked by the mouse
+                        fromSpot: go.Spot.Right, // links only go from the right side to the left side
+                        toSpot: go.Spot.Left,
+                        // allow drawing links from or to this port:
+                        fromLinkable: true,
+                        toLinkable: true
+                    },
+                    _(go.Shape, {
+                            width: 12,
+                            height: 12,
+                            column: 0,
+                            strokeWidth: 2,
+                            margin: 4,
+                            // but disallow drawing links from or to this shape:
+                            fromLinkable: false,
+                            toLinkable: false
+                        },
+                        new go.Binding("figure", "figure"),
+                        new go.Binding("fill", "color")),
+                    _(go.TextBlock, {
+                            margin: new go.Margin(0, 5),
+                            column: 1,
+                            font: "bold 13px sans-serif",
+                            alignment: go.Spot.Left,
+                            // and disallow drawing links from or to this text:
+                            fromLinkable: false,
+                            toLinkable: false
+                        },
+                        new go.Binding("text", "name")),
+                    _(go.TextBlock, {
+                            margin: new go.Margin(0, 5),
+                            column: 2,
+                            font: "13px sans-serif",
+                            alignment: go.Spot.Left
+                        },
+                        new go.Binding("text", "info"))
+                );
+
+            // This template represents a whole "record".
+            myDiagram.nodeTemplate =
+                _(go.Node, "Auto", {
+                        copyable: false, //可复制
+                        deletable: true //可删除
+                    },
+                    new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify), //双休连接
+                    // this rectangular shape surrounds the content of the node
+                    _(go.Shape, {
+                        fill: "#EEEEEE"
+                    }),
+                    // the content consists of a header and a list of items
+                    _(go.Panel, "Vertical",
+                        // this is the header for the whole node
+                        _(go.Panel, "Auto", {
+                                stretch: go.GraphObject.Horizontal
+                            }, // as wide as the whole node
+                            _(go.Shape, {
+                                fill: "#1570A6",
+                                stroke: null
+                            }),
+                            _(go.TextBlock, {
+                                    alignment: go.Spot.Center,
+                                    margin: 3,
+                                    stroke: "white",
+                                    textAlign: "center",
+                                    font: "bold 12pt sans-serif"
+                                },
+                                new go.Binding("text", "key"))),
+                        // this Panel holds a Panel for each item object in the itemArray;
+                        // each item Panel is defined by the itemTemplate to be a TableRow in this Table
+                        _(go.Panel, "Table", {
+                                padding: 2,
+                                minSize: new go.Size(100, 10),
+                                defaultStretch: go.GraphObject.Horizontal,
+                                itemTemplate: fieldTemplate
+                            },
+                            new go.Binding("itemArray", "fields")
+                        ) // end Table Panel of items
+                    ) // end Vertical Panel
+                ); // end Node
+
+            myDiagram.linkTemplate =
+                _(go.Link, {
+                        relinkableFrom: false, //线的来源可以变动
+                        relinkableTo: false, // 线的终点可以变动
+                        routing: go.Link.AvoidsNodes, // 绕行节点
+                        toShortLength: 4,
+                        fromShortLength: 2
+                    },
+                    _(go.Shape, {
+                        strokeWidth: 1.5
+                    }),
+                    _(go.Shape, {
+                        toArrow: "Standard",
+                        stroke: null
+                    })
+                );
+
+
+            myDiagram.model =
+                _(go.GraphLinksModel, {
+                    copiesArrays: true,
+                    copiesArrayObjects: true,
+                    linkFromPortIdProperty: "fromPort",
+                    linkToPortIdProperty: "toPort",
+                    nodeDataArray: nodeDataArray,
+                    linkDataArray: linkDataArray
+                });
+
+
+        }
+
+        function showModel() {
+            const modelAllInfo = JSON.parse(myDiagram.model.toJson())
+            console.log('修改内容是在浏览器里可以看到的', modelAllInfo);
+            if (modelLocalList.length > 0) {
+                let nodePostionList = []
+                nodePostionList = modelAllInfo["nodeDataArray"]
+                if (nodePostionList.length > 0) {
+                    for (let nodeItem of modelLocalList) {
+                        for (let changedNode of nodePostionList) {
+                            if (nodeItem.key === changedNode['key']) {
+                                nodeItem['loc'] = changedNode['loc']
+                            }
+                        }
+                    }
+                }
+            } else {
+                modelLocalList = nodeDataArray
+            }
+        }
+    </script>
 
 </body>
 

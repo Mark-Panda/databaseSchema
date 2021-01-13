@@ -35,21 +35,37 @@
     </div>
 
     <script>
-        function init() {
-            let nodeDataArray = '<%- nodeDataArray%>'
-            let linkDataArray = '<%- linkDataArray%>'
-            if (window.goSamples) goSamples(); // init for these samples -- you don't need to call this
-            var $ = go.GraphObject.make; // for conciseness in defining templates
+        let modelLocalList = []
 
-            myDiagram =
-                $(go.Diagram, "myDiagramDiv", {
-                    validCycle: go.Diagram.CycleNotDirected, // don't allow loops
-                    // For this sample, automatically show the state of the diagram's model on the page
-                    "ModelChanged": function(e) {
-                        if (e.isTransactionFinished) showModel();
-                    },
-                    "undoManager.isEnabled": true
-                });
+        let nodeDataArray = '<%- nodeDataArray%>'
+        let linkDataArray = '<%- linkDataArray%>'
+
+        if (window.goSamples) goSamples(); // init for these samples -- you don't need to call this
+        var $ = go.GraphObject.make; // for conciseness in defining templates
+
+        myDiagram =
+            $(go.Diagram, "myDiagramDiv", {
+                validCycle: go.Diagram.CycleNotDirected, // don't allow loops
+                "grid.visible": true, //显示背景网格
+                "animationManager.isEnabled": false,
+                // For this sample, automatically show the state of the diagram's model on the page
+                "ModelChanged": function(e) {
+                    console.log('模型修改-------', e);
+                    if (e.isTransactionFinished) showModel()
+
+                },
+                // contentAlignment: go.Spot.Center,
+                allowHorizontalScroll: true,
+                allowVerticalScroll: true,
+                // layout: $(go.TreeLayout, {
+                //     angle: 90,
+                //     layerSpacing: 35,
+                //     // sorting: go.TreeLayout.SortingAscending
+                // }),
+                "undoManager.isEnabled": true
+            });
+
+        function init() {
 
             // This template is a Panel that is used to represent each item in a Panel.itemArray.
             // The Panel is data bound to the item object.
@@ -164,11 +180,27 @@
                     linkDataArray: JSON.parse(linkDataArray)
                 });
 
-            showModel(); // show the diagram's initial model
 
-            function showModel() {
-                console.log('修改内容是在浏览器里可以看到的', myDiagram.model.toJson());
-                // document.getElementById("mySavedModel").textContent = myDiagram.model.toJson();
+        }
+
+        function showModel() {
+            const modelAllInfo = JSON.parse(myDiagram.model.toJson())
+            console.log('修改内容是在浏览器里可以看到的', modelAllInfo);
+            if (modelLocalList.length > 0) {
+                console.log('修改内容是在浏览器里可以看到的1111', modelAllInfo['nodeDataArray']);
+                let nodePostionList = []
+                nodePostionList = modelAllInfo["nodeDataArray"]
+                if (nodePostionList.length > 0) {
+                    for (let nodeItem of modelLocalList) {
+                        for (let changedNode of nodePostionList) {
+                            if (nodeItem.key === changedNode['key']) {
+                                nodeItem['loc'] = changedNode['loc']
+                            }
+                        }
+                    }
+                }
+            } else {
+                modelLocalList = nodeDataArray
             }
         }
     </script>

@@ -27,26 +27,8 @@ app.get('/', async(req, res) => {
 
 
 
-//获取模型
+//获取模型 用不到了
 app.get('/datamodel', async(req, res) => {
-
-
-    let linkDataArray1 = [{
-        from: "Record1",
-        fromPort: "field1",
-        to: "Record2",
-        toPort: "fieldA"
-    }, {
-        from: "Record1",
-        fromPort: "field2",
-        to: "Record2",
-        toPort: "fieldD"
-    }, {
-        from: "Record1",
-        fromPort: "fieldThree",
-        to: "Record2",
-        toPort: "fieldB"
-    }]
 
     let nodeDataArray = req.query.nodeDataArray
     let linkDataArray = req.query.linkDataArray
