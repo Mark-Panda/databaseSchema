@@ -1,9 +1,12 @@
 const express = require('express');
 const ejs = require('ejs');
 const cors = require('cors');
-// const path = require('path');
+
 const app = express();
-//把./views目录设置为模板文件的根，html文件模板放在view目录中
+
+const { model, rootPath } = require('./config').Config
+const { makePrisma } = require('./reslover')
+    //把./views目录设置为模板文件的根，html文件模板放在view目录中
 app.set('views', './views');
 // app.set('views', path.join(__dirname, 'views'));
 //设置模板引擎为ejs
@@ -19,21 +22,25 @@ app.use(express.urlencoded({ extended: true })) // for parsing application/x-www
 const port = process.env.PORT || 9999;
 
 
-
+console.log('初始化配置信息', model);
 
 app.get('/', async(req, res) => {
-    res.render('index')
+    const filedType = model.filedType
+    res.render('index', { 'filedType': JSON.stringify(filedType) })
 })
 
 
-
-//获取模型 用不到了
-app.get('/datamodel', async(req, res) => {
-
-    let nodeDataArray = req.query.nodeDataArray
-    let linkDataArray = req.query.linkDataArray
-    res.render('datamode', { "nodeDataArray": nodeDataArray, "linkDataArray": linkDataArray })
+//生成prisma文件
+app.post('/toMakeFile', async(req, res) => {
+    console.log('请求信息', req.body);
+    const getData = req.body
+    if (Object.keys(getData.nodeInfo).length > 0) {
+        await makePrisma(getData.nodeInfo, getData.linkInfo)
+        return res.json({ code: 200, msg: 'success' })
+    }
+    return res.json({ code: 300, msg: '无效的内容' })
 })
+
 
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));

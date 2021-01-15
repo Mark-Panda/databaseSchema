@@ -18,7 +18,35 @@
         let allTableList = [] //所有的表名  存放可被操作的表名  只存放名称
         let addNodeFieldInfo = []
 
+        let allFiledType = '<%- filedType%>' //所有的字段类型
+
         let isUpdateTable = false
+
+        // function openFile() {
+        //     window.open("newurl", target = "xxx"); //xxx是新窗口的name属性值
+        // }
+
+        //请求接口生成文件
+        function fileMake() {
+            const modelAllInfo = JSON.parse(myDiagram.model.toJson())
+            $.ajax({
+                type: 'POST',
+                url: '/toMakeFile',
+                data: {
+                    nodeInfo: modelAllInfo["nodeDataArray"] || [],
+                    linkInfo: modelAllInfo['linkDataArray'] || []
+                },
+                success: function(data, res) {
+                    console.log('成功返回', data);
+                    if (data.code === 200) {
+                        alert("文件创建成功")
+                    } else {
+                        alert("文件创建失败")
+                    }
+                },
+                dataType: 'json'
+            })
+        }
 
         //用于生成模型图
 
@@ -26,7 +54,11 @@
             let tempFieldList = []
             let nodeInfo = {}
             console.log('生成模型', document.getElementById("modelName").value);
+            //判断是否选择了枚举类型
+            const isEnum = document.getElementById('checkEnumerateSelect').value
+            console.log('是否枚举类型', isEnum);
             const tableName = document.getElementById("modelName").value
+            const tableDesc = document.getElementById("modelDescName").value
             if (!tableName) {
                 alert("表名不能为空")
                 return
@@ -38,6 +70,8 @@
 
                 allTableList.push(tableName)
                 nodeInfo['key'] = tableName
+                nodeInfo['keyDesc'] = tableDesc ? tableDesc : ''
+                nodeInfo['schemaType'] = isEnum === 'true' ? 'enum' : 'model'
                 nodeInfo['fields'] = []
                 myDiagram.startTransaction("")
                 myDiagram.model.addNodeData(nodeInfo);
@@ -56,12 +90,21 @@
                 document.getElementById('manyCheckShow').style.display = 'block'
                 document.getElementById('lastPageShow').style.display = 'inline'
                 document.getElementById('modelNameShow').style.display = 'none'
+                document.getElementById('modelDescNameShow').style.display = 'none'
                 document.getElementById('goModelShow').style.display = 'none'
                 document.getElementById('addLineShow').style.display = 'inline'
                 document.getElementById('delLineShow').style.display = 'block'
                 document.getElementById('mytable').style.display = 'table'
 
                 document.getElementById('delTableShow').style.display = 'none'
+                document.getElementById('enumerateShow').style.display = 'none'
+
+                if (isEnum === 'true') {
+                    document.getElementById('manyCheckShow').style.display = 'none'
+                        // document.getElementById('defaultName').style.display = 'none'
+                        // document.getElementById('defaultNameLabel').style.display = 'none'
+                }
+
             }
         }
 
@@ -70,10 +113,12 @@
             $('#selectSignField').find('li').remove()
             const presentTable = document.getElementById('tableRelation').value
             console.log('当前的关联的表名', presentTable);
-            for (let i = 0; i < nodeDataArray.length; i++) {
-                if (nodeDataArray[i].key === presentTable) {
+            const modelAllInfo = JSON.parse(myDiagram.model.toJson())
+            const presentNodeDataArray = modelAllInfo['nodeDataArray']
+            for (let i = 0; i < presentNodeDataArray.length; i++) {
+                if (presentNodeDataArray[i].key === presentTable) {
                     console.log('存在表名相同');
-                    const presentFields = nodeDataArray[i].fields
+                    const presentFields = presentNodeDataArray[i].fields
                     for (let j = 0; j < presentFields.length; j++) {
                         const nowField = presentFields[j].name
                         console.log('关联表的每个字段名称', nowField);
@@ -86,10 +131,22 @@
         //外键关系获取所有的表
         function getTables() {
             $('#selectSignTable').find('li').remove()
-            for (let i = 0; i < nodeDataArray.length; i++) {
-                $('#selectSignTable').append('<li><a href="#" id="forignKeyRel">' + nodeDataArray[i].key + '</a></li>')
+            const modelAllInfo = JSON.parse(myDiagram.model.toJson())
+            const presentNodeDataArray = modelAllInfo['nodeDataArray']
+            for (let i = 0; i < presentNodeDataArray.length; i++) {
+                $('#selectSignTable').append('<li><a href="#" id="forignKeyRel">' + presentNodeDataArray[i].key + '</a></li>')
             }
         }
+
+        //获取所有的字段类型
+        function getAllFiledType() {
+            $('#selectSignCome').find('li').remove()
+            for (let i = 0; i < JSON.parse(allFiledType).length; i++) {
+                $('#selectSignCome').append('<li><a href="#" name="allTypeInfo" id="configFiledType">' + JSON.parse(allFiledType)[i] + '</a></li>')
+            }
+        }
+
+
 
         //添加字段信息
         function addTable() {
@@ -117,6 +174,8 @@
             const filedName = document.getElementById('filedName').value //字段名称
             const typeName = document.getElementById('fileTypeName').value //字段类型
 
+            const descInfo = document.getElementById('descInfo').value //字段描述信息
+
             const relTableName = document.getElementById('tableRelation').value //表关系
             const relFieldName = document.getElementById('fieldRelation').value //字段关系
             const relTableForiegn = document.getElementById('relForignName').value //外键名称
@@ -134,6 +193,7 @@
                 filedListInfo.push(typeName)
                 const defaultName = document.getElementById('defaultName').value
                 filedListInfo.push(defaultName)
+                filedListInfo.push(descInfo)
                 otherInfo['defaultValue'] = defaultName
 
                 if (isHaveNull === 'true') {
@@ -165,7 +225,8 @@
                             from: presentNode.key,
                             fromPort: filedName,
                             to: relTableName,
-                            toPort: relFieldName
+                            toPort: relFieldName,
+                            relationType: relTableForiegn
                         }
                         filedListInfo.push('true')
                         filedListInfo.push(relTableForiegn)
@@ -199,6 +260,7 @@
                 addNodeFieldInfo.push({
                     name: filedName,
                     info: typeName,
+                    desc: descInfo,
                     otherInfo
                 })
 
@@ -254,6 +316,7 @@
             document.getElementById('manyCheckShow').style.display = 'none'
             document.getElementById('lastPageShow').style.display = 'none'
             document.getElementById('modelNameShow').style.display = 'block'
+            document.getElementById('modelDescNameShow').style.display = 'block'
             document.getElementById('goModelShow').style.display = 'inline'
             document.getElementById('addLineShow').style.display = 'none'
             document.getElementById('delLineShow').style.display = 'none'
@@ -263,6 +326,7 @@
             document.getElementById('forignKeyRelTable').style.display = 'none'
 
             document.getElementById('delTableShow').style.display = 'block'
+            document.getElementById('enumerateShow').style.display = 'block'
             addNodeFieldInfo = []
         }
 
@@ -291,11 +355,13 @@
             document.getElementById('manyCheckShow').style.display = 'block'
             document.getElementById('lastPageShow').style.display = 'inline'
             document.getElementById('modelNameShow').style.display = 'none'
+            document.getElementById('modelDescNameShow').style.display = 'none'
             document.getElementById('goModelShow').style.display = 'none'
             document.getElementById('addLineShow').style.display = 'inline'
             document.getElementById('delLineShow').style.display = 'block'
             document.getElementById('mytable').style.display = 'table'
             document.getElementById('delTableShow').style.display = 'none'
+            document.getElementById('enumerateShow').style.display = 'none'
 
             //被选中的表名
             const selectedTable = $(this).html()
@@ -305,6 +371,9 @@
             const modelAllInfo = JSON.parse(myDiagram.model.toJson())
             for (let i in modelAllInfo["nodeDataArray"]) {
                 if (modelAllInfo["nodeDataArray"][i].key === $(this).html()) {
+                    if (modelAllInfo['nodeDataArray'][i].schemaType === 'enum') { //枚举类型
+                        document.getElementById('manyCheckShow').style.display = 'none'
+                    }
                     for (let j = 0; j < modelAllInfo["nodeDataArray"][i].fields.length; j++) {
                         var c = document.getElementById('mytable'); //获得表格的信息
                         const tabelLen = c.rows.length
@@ -314,11 +383,12 @@
                             var y = x.insertCell(o);
                             if (o === 0) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].name;
                             if (o === 1) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].info;
-                            if (o === 2) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.defaultValue;
-                            if (o === 3) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.isHaveNull ? 'true' : 'false';
-                            if (o === 4) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.isHavePrimaryKey ? 'true' : 'false';
-                            if (o === 5) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo ? 'true' : 'false';
-                            if (o === 6) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo ? modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo.relType : '';
+                            if (o === 2) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].desc;
+                            if (o === 3) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.defaultValue;
+                            if (o === 4) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.isHaveNull ? 'true' : 'false';
+                            if (o === 5) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.isHavePrimaryKey ? 'true' : 'false';
+                            if (o === 6) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo ? 'true' : 'false';
+                            if (o === 7) y.innerHTML = modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo ? modelAllInfo["nodeDataArray"][i].fields[j].otherInfo.forignKeyInfo.relType : '';
                         }
                     }
                 }
@@ -382,9 +452,26 @@
         })
 
 
+
+        $(document).on("click", "#configFiledType", function() {
+            $("div#selectType").siblings("input").val($(this).html());
+        })
+
         $(document).ready(function() {
-            $("[name='allTypeInfo']").click(function() {
-                $("div#selectType").siblings("input").val($(this).html());
+            // $("[name='allTypeInfo']").click(function() {
+            //     console.log('00000');
+            //     $("div#selectType").siblings("input").val($(this).html());
+            // });
+
+            $("[name='isEnumerateSelect']").click(function() {
+                console.log('枚举');
+                if ($('input:checkbox[name="isEnumerateSelect"]:checked').length > 0) {
+                    console.log('选中', $(this));
+                    $(this).attr("value", "true")
+                } else {
+                    $(this).attr("value", "false")
+                }
+                // console.log('是否枚举类型', document.getElementById('checkEnumerateSelect').value);
             });
             $("[name='allTableTypeInfo']").click(function() {
                 console.log('获取外键表关系', $(this).attr("value"));
@@ -425,30 +512,40 @@
 <body>
     <div style="width:100%; height:50px;float:left; text-align: center;font-size: xx-large; background-color:#c9bcca;">
         模型
+        <button type="button" class="btn btn-success btn-lg" style="margin-left: 100px;" onclick="fileMake()">生成文档</button>
+        <!-- <button type="button" class="btn btn-success btn-lg" style="margin-left: 200px;" onclick="openFile()">查看文档</button> -->
     </div>
+
+
     <div class="myDiagramDiv" id="myDiagramDiv" style="width:70%; height:1200px;float:left; background-color:#ecf3f3;">
         <!-- <iframe frameborder="0" class="iframStyle" height="100%" width="100%" id="iframStyleId">页面</iframe> -->
     </div>
     <div id="myLISTDiv" style="width:30%; height:1200px;float:left; background-color:#278a8a;">
+
         <div class="input-group" style="margin-top: 100px;margin-left: 100px; width: 50%; display: block;" id="modelNameShow">
             <span class="input-group-addon" id="basic-addon1">模型名称</span>
             <input type="text" class="form-control" placeholder="" aria-describedby="basic-addon1" id="modelName">
         </div>
+        <div class="input-group" style="margin-top: 50px;margin-left: 100px; width: 50%; display: block;" id="modelDescNameShow">
+            <span class="input-group-addon" id="basic-addon1">模型描述</span>
+            <input type="text" class="form-control" placeholder="" aria-describedby="basic-addon1" id="modelDescName">
+        </div>
 
+        <div class="checkbox" style="margin-top: 50px;margin-left: 140px; width: 60%; " id="enumerateShow">
+            <label for="">
+                <input type="checkbox" name="isEnumerateSelect" value="false" id="checkEnumerateSelect">是否为Enum模型
+            </label>
+        </div>
         <div class="row" style="margin-top: 20px;margin-left: 20px; display: none;" id="typeShow">
             <div class="col-lg-6">
                 <div class="input-group">
                     <div class="input-group-btn" id="selectType">
-                        <button type="button" id="selectButtonType" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        <button type="button" id="selectButtonType" onclick="getAllFiledType()" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                             字段类型 
                             <span class="caret"></span>
                             <span class="sr-only">Toggle Dropdown</span>
                         </button>
-                        <ul class="dropdown-menu" id="selectSign">
-                            <li><a href="#" name="allTypeInfo">String</a></li>
-                            <li><a href="#" name="allTypeInfo">Int</a></li>
-                            <li><a href="#" name="allTypeInfo">Boolean</a></li>
-                            <li><a href="#" name="allTypeInfo">Enum</a></li>
+                        <ul class="dropdown-menu" id="selectSignCome">
                         </ul>
                     </div>
                     <input type="text" id="fileTypeName" class="form-control" aria-label="..." placeholder="" disabled="disabled">
@@ -459,9 +556,12 @@
         <div class="container" style="margin-top: 20px;margin-left: 20px; width: 50%; display: none;" id="filednameShow">
             <label>字段名称</label>
             <input type="text" name="filedName" id="filedName" value="" class="form-control" />
-            <label>默认值</label>
+            <label id="defaultNameLabel">默认值</label>
             <input type="text" name="defaultName" id="defaultName" value="" class="form-control" />
+            <label>描述信息</label>
+            <input type="text" name="descInfo" id="descInfo" value="" class="form-control" />
         </div>
+
         <div class="checkbox" style="margin-top: 20px;margin-left: 25px; display: none;" id="manyCheckShow">
             <label for="">
                 <input type="checkbox" name="isNullSelect" value="false" id="checkNullSelect">是否为NULL
@@ -554,6 +654,7 @@
                     <th>字段名</th>
                     <th>类型</th>
                     <th>默认值</th>
+                    <th>描述</th>
                     <th>是否为NULL</th>
                     <th>是否为主键</th>
                     <th>是否为外键</th>
@@ -722,8 +823,8 @@
                     copiesArrayObjects: true,
                     linkFromPortIdProperty: "fromPort",
                     linkToPortIdProperty: "toPort",
-                    nodeDataArray: nodeDataArray,
-                    linkDataArray: linkDataArray
+                    nodeDataArray: [],
+                    linkDataArray: []
                 });
 
 

@@ -1,0 +1,3 @@
+# 模型基础类型
+model:
+  filedType: ["String", "Int", "Boolean", "Enum", "Json"] 
