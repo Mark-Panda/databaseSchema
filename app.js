@@ -1,7 +1,8 @@
 const express = require('express');
 const ejs = require('ejs');
 const cors = require('cors');
-
+const fs = require('fs');
+const path = require('path');
 const app = express();
 
 const { model, rootPath } = require('./config').Config
@@ -30,9 +31,14 @@ app.get('/', async(req, res) => {
 })
 
 
+app.get('/viewFile', async(req, res) => {
+    const fileData = fs.readFileSync(path.join(rootPath, 'example.prisma'), 'utf-8')
+    res.render('file', { "data": fileData })
+})
+
+
 //生成prisma文件
 app.post('/toMakeFile', async(req, res) => {
-    console.log('请求信息', req.body);
     const getData = req.body
     if (Object.keys(getData.nodeInfo).length > 0) {
         await makePrisma(getData.nodeInfo, getData.linkInfo)

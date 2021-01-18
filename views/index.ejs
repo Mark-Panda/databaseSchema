@@ -22,9 +22,9 @@
 
         let isUpdateTable = false
 
-        // function openFile() {
-        //     window.open("newurl", target = "xxx"); //xxx是新窗口的name属性值
-        // }
+        function openFile() {
+            window.open("/viewFile", target = "xxx"); //xxx是新窗口的name属性值
+        }
 
         //请求接口生成文件
         function fileMake() {
@@ -513,7 +513,7 @@
     <div style="width:100%; height:50px;float:left; text-align: center;font-size: xx-large; background-color:#c9bcca;">
         模型
         <button type="button" class="btn btn-success btn-lg" style="margin-left: 100px;" onclick="fileMake()">生成文档</button>
-        <!-- <button type="button" class="btn btn-success btn-lg" style="margin-left: 200px;" onclick="openFile()">查看文档</button> -->
+        <button type="button" class="btn btn-success btn-lg" style="margin-left: 200px;" onclick="openFile()">查看文档</button>
     </div>
 
 
