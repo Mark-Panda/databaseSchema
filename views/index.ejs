@@ -726,18 +726,20 @@
                         fromLinkable: true,
                         toLinkable: true
                     },
-                    _(go.Shape, {
-                            width: 12,
-                            height: 12,
-                            column: 0,
-                            strokeWidth: 2,
-                            margin: 4,
-                            // but disallow drawing links from or to this shape:
-                            fromLinkable: false,
-                            toLinkable: false
-                        },
-                        new go.Binding("figure", "figure"),
-                        new go.Binding("fill", "color")),
+                    //字段前面的框框和颜色
+                    // _(go.Shape, {
+                    //         width: 12,
+                    //         height: 12,
+                    //         column: 0,
+                    //         strokeWidth: 2,
+                    //         margin: 4,
+                    //         // but disallow drawing links from or to this shape:
+                    //         fromLinkable: false,
+                    //         toLinkable: false
+                    //     },
+                    //     new go.Binding("figure", "figure"),
+                    //     new go.Binding("fill", "color")
+                    // ),
                     _(go.TextBlock, {
                             margin: new go.Margin(0, 5),
                             column: 1,
@@ -801,6 +803,7 @@
 
             myDiagram.linkTemplate =
                 _(go.Link, {
+                        // curve: go.Link.Bezier, //曲线  不用就是直线
                         relinkableFrom: false, //线的来源可以变动
                         relinkableTo: false, // 线的终点可以变动
                         routing: go.Link.AvoidsNodes, // 绕行节点
@@ -808,10 +811,10 @@
                         fromShortLength: 2
                     },
                     _(go.Shape, {
-                        strokeWidth: 1.5
+                        strokeWidth: 1.5 //节点连线宽度
                     }),
                     _(go.Shape, {
-                        toArrow: "Standard",
+                        toArrow: "Standard", //箭头
                         stroke: null
                     })
                 );
